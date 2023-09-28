@@ -1,14 +1,14 @@
-import taxesJson from '@db/taxes.json';
-import { Injectable } from '@nestjs/common';
-import { plainToClass } from 'class-transformer';
-import { PaymentIntent } from './entries/payment-intent.entity';
+import paymentIntentJson from './payment-intent.json';
+import {Injectable} from '@nestjs/common';
+import {plainToClass} from 'class-transformer';
+import {PaymentIntent} from './entities/payment-intent.entity';
 
-const paymentIntents = plainToClass(PaymentIntent, taxesJson);
+const paymentIntents = plainToClass(PaymentIntent, paymentIntentJson);
 
 @Injectable()
 export class PaymentIntentService {
   private paymentIntents: PaymentIntent[] = paymentIntents;
-  getPaymentIntent() {
-    return `this action is returning payment intent`;
+  findOne(tracking_number: string): PaymentIntent {
+    return this.paymentIntents[0];
   }
 }

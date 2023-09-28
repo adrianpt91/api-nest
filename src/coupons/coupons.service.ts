@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { CreateCouponDto } from './dto/create-coupon.dto';
-import { UpdateCouponDto } from './dto/update-coupon.dto';
+import { CreateCouponInput } from './dto/create-coupon.input';
+import { UpdateCouponInput } from './dto/update-coupon.input';
 import { Coupon } from './entities/coupon.entity';
-import couponsJson from '@db/coupons.json';
+import couponsJson from './coupons.json';
 import Fuse from 'fuse.js';
-import { GetCouponsDto } from './dto/get-coupons.dto';
+import { GetCouponsArgs } from './dto/get-coupons.args';
 import { paginate } from 'src/common/pagination/paginate';
+import { GetCouponArgs } from './dto/get-coupon.args';
+import {VerifyCouponInput, VerifyCouponResponse} from './dto/verify-coupon.input';
 
 const coupons = plainToClass(Coupon, couponsJson);
 const options = {
-  keys: ['code'],
+  keys: ['name', 'code'],
   threshold: 0.3,
 };
 const fuse = new Fuse(coupons, options);
@@ -19,53 +21,35 @@ const fuse = new Fuse(coupons, options);
 export class CouponsService {
   private coupons: Coupon[] = coupons;
 
-  create(createCouponDto: CreateCouponDto) {
+  create(createCouponInput: CreateCouponInput) {
     return this.coupons[0];
   }
 
-  getCoupons({ search, limit, page }: GetCouponsDto) {
-    if (!page) page = 1;
-    if (!limit) limit = 12;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
+  getCoupons({ text, first, page }: GetCouponsArgs) {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
     let data: Coupon[] = this.coupons;
-    // if (text?.replace(/%/g, '')) {
-    //   data = fuse.search(text)?.map(({ item }) => item);
-    // }
 
-    if (search) {
-      const parseSearchParams = search.split(';');
-      const searchText: any = [];
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        // TODO: Temp Solution
-        if (key !== 'slug') {
-          searchText.push({
-            [key]: value,
-          });
-        }
-      }
-
-      data = fuse
-        .search({
-          $and: searchText,
-        })
-        ?.map(({ item }) => item);
+    if (text?.replace(/%/g, '')) {
+      const formatText = text?.replace(/%/g, '');
+      data = fuse.search(formatText)?.map(({ item }) => item);
     }
 
     const results = data.slice(startIndex, endIndex);
-    const url = `/coupons?search=${search}&limit=${limit}`;
     return {
       data: results,
-      ...paginate(data.length, page, limit, results.length, url),
+      paginatorInfo: paginate(data.length, page, first, results.length),
     };
   }
 
-  getCoupon(param: string, language: string): Coupon {
-    return this.coupons.find((p) => p.code === param);
+  getCoupon({ id, code }: GetCouponArgs): Coupon {
+    if (id) {
+      return this.coupons.find((p) => p.id === Number(id));
+    }
+    return this.coupons.find((p) => p.code === code);
   }
 
-  update(id: number, updateCouponDto: UpdateCouponDto) {
+  update(id: number, updateCouponInput: UpdateCouponInput) {
     return this.coupons[0];
   }
 
@@ -73,29 +57,11 @@ export class CouponsService {
     return `This action removes a #${id} coupon`;
   }
 
-  verifyCoupon(code: string) {
+  verifyCoupon(verifyCouponInput: VerifyCouponInput): VerifyCouponResponse {
     return {
       is_valid: true,
-      coupon: {
-        id: 9,
-        code: code,
-        description: null,
-        image: {
-          id: 925,
-          original:
-            'https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/925/5x2x.png',
-          thumbnail:
-            'https://pickbazarlaravel.s3.ap-southeast-1.amazonaws.com/925/conversions/5x2x-thumbnail.jpg',
-        },
-        type: 'fixed',
-        amount: 5,
-        active_from: '2021-03-28T05:46:42.000Z',
-        expire_at: '2024-06-23T05:46:42.000Z',
-        created_at: '2021-03-28T05:48:16.000000Z',
-        updated_at: '2021-08-19T03:58:34.000000Z',
-        deleted_at: null,
-        is_valid: true,
-      },
+      coupon: this.coupons[0],
+      message: '',
     };
   }
 }

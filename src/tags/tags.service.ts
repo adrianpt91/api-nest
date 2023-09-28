@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { paginate } from 'src/common/pagination/paginate';
-import { CreateTagDto } from './dto/create-tag.dto';
-import { GetTagsDto } from './dto/get-tags.dto';
-import { UpdateTagDto } from './dto/update-tag.dto';
+import { CreateTagInput } from './dto/create-tag.input';
+import { GetTagsArgs } from './dto/get-tags.args';
+import { UpdateTagInput } from './dto/update-tag.input';
 import { Tag } from './entities/tag.entity';
-import tagsJson from '@db/tags.json';
 import { plainToClass } from 'class-transformer';
 import Fuse from 'fuse.js';
+import tagsJson from './tags.json';
+import { GetTagArgs } from './dto/get-tag.args';
 
 const tags = plainToClass(Tag, tagsJson);
-
 const options = {
   keys: ['name'],
   threshold: 0.3,
@@ -20,53 +20,46 @@ const fuse = new Fuse(tags, options);
 export class TagsService {
   private tags: Tag[] = tags;
 
-  create(createTagDto: CreateTagDto) {
-    return {
+  create({ type, ...createTagInput }: CreateTagInput) {
+    const newTag = {
       id: this.tags.length + 1,
-      ...createTagDto,
+      slug: createTagInput.name,
+      ...createTagInput,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
+    // TODO: Fix it
+    // @ts-ignore
+    this.tags.push(newTag);
+    return newTag;
   }
 
-  findAll({ page, limit, search }: GetTagsDto) {
-    if (!page) page = 1;
+  findAll({ text, first, page }: GetTagsArgs) {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
     let data: Tag[] = this.tags;
-
-    if (search) {
-      const parseSearchParams = search.split(';');
-      const searchText: any = [];
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        // TODO: Temp Solution
-        if (key !== 'slug') {
-          searchText.push({
-            [key]: value,
-          });
-        }
-      }
-
-      data = fuse
-        .search({
-          $and: searchText,
-        })
-        ?.map(({ item }) => item);
+    if (text?.replace(/%/g, '')) {
+      const formatText = text?.replace(/%/g, '');
+      data = fuse.search(formatText)?.map(({ item }) => item);
     }
-
-    const url = `/tags?limit=${limit}`;
+    const results = data.slice(startIndex, endIndex);
     return {
-      data,
-      ...paginate(this.tags.length, page, limit, this.tags.length, url),
+      data: results,
+      paginatorInfo: paginate(this.tags.length, page, first, this.tags.length),
     };
   }
 
-  findOne(param: string, language: string) {
-    return this.tags.find((p) => p.id === Number(param) || p.slug === param);
+  findOne(getTagArgs: GetTagArgs) {
+    return this.tags.find(
+      (tag) => tag.id === Number(getTagArgs.id) || tag.slug === getTagArgs.slug,
+    );
   }
 
-  update(id: number, updateTagDto: UpdateTagDto) {
+  update(id: number, updateTagInput: UpdateTagInput) {
     return this.tags[0];
   }
 
   remove(id: number) {
-    return `This action removes a #${id} tag`;
+    return this.tags[0];
   }
 }

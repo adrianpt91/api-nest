@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { PaymentIntentController } from './payment-intent.controller';
 import { PaymentIntentService } from './payment-intent.service';
+import { PaymentIntentResolver } from './payment-intent.resolver';
 
 @Module({
-  controllers: [PaymentIntentController],
-  providers: [PaymentIntentService],
+  providers: [PaymentIntentService, PaymentIntentResolver]
 })
 export class PaymentIntentModule {}

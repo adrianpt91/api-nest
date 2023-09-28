@@ -1,8 +1,8 @@
-import paymentGatewayJson from '@db/payment-gateway.json';
-import cards from '@db/payment-methods.json';
+import paymentGatewayJson from './payment-gateway.json';
+import cards from './payment-methods.json';
 import { Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { AuthService } from 'src/auth/auth.service';
+import { UsersService as AuthService } from 'src/users/users.service';
 import {
   StripeCustomer,
   StripePaymentMethod,
@@ -10,39 +10,39 @@ import {
 import { StripePaymentService } from 'src/payment/stripe-payment.service';
 import { Setting } from 'src/settings/entities/setting.entity';
 import { SettingsService } from 'src/settings/settings.service';
-import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
-import { DefaultCart } from './dto/set-default-card.dto';
-import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { AddNewCardInput } from './dto/add-new-card.input';
+import { UpdateCardInput } from './dto/update-card.input';
 import { PaymentGateWay } from './entities/payment-gateway.entity';
-import { PaymentMethod } from './entities/payment-method.entity';
+import { Card } from './entities/card.entity';
 
-const paymentMethods = plainToClass(PaymentMethod, cards);
+const paymentMethods = plainToClass(Card, cards);
 const paymentGateways = plainToClass(PaymentGateWay, paymentGatewayJson);
+
 @Injectable()
 export class PaymentMethodService {
-  private paymentMethods: PaymentMethod[] = paymentMethods;
+  private paymentMethods: Card[] = paymentMethods;
+
   constructor(
     private readonly authService: AuthService,
     private readonly stripeService: StripePaymentService,
     private readonly settingService: SettingsService,
   ) {}
-  private setting: Setting = this.settingService.findAll();
 
-  async create(createPaymentMethodDto: CreatePaymentMethodDto) {
+  private setting: Setting = this.settingService.getSettings();
+
+  async create(createPaymentMethodDto: AddNewCardInput) {
     try {
       const defaultCard = this.paymentMethods.find(
-        (card: PaymentMethod) => card.default_card,
+        (card: Card) => card.default_card,
       );
       if (!defaultCard || this.paymentMethods.length === 0) {
         createPaymentMethodDto.default_card = true;
       }
       if (createPaymentMethodDto.default_card) {
-        this.paymentMethods = [...this.paymentMethods].map(
-          (card: PaymentMethod) => {
-            card.default_card = false;
-            return card;
-          },
-        );
+        this.paymentMethods = [...this.paymentMethods].map((card: Card) => {
+          card.default_card = false;
+          return card;
+        });
       }
       const paymentGateway: string = this.setting.options.paymentGateway;
       return await this.saveCard(createPaymentMethodDto, paymentGateway);
@@ -57,26 +57,23 @@ export class PaymentMethodService {
   }
 
   findOne(id: number) {
-    return this.paymentMethods.find(
-      (pm: PaymentMethod) => pm.id === Number(id),
-    );
+    return this.paymentMethods.find((pm: Card) => pm.id === Number(id));
   }
 
-  update(id: number, updatePaymentMethodDto: UpdatePaymentMethodDto) {
+  update(id: number, updatePaymentMethodDto: UpdateCardInput) {
     return this.findOne(id);
   }
 
   remove(id: number) {
-    const card: PaymentMethod = this.findOne(id);
+    const card: Card = this.findOne(id);
     this.paymentMethods = [...this.paymentMethods].filter(
-      (cards: PaymentMethod) => cards.id !== id,
+      (cards: Card) => cards.id !== id,
     );
     return card;
   }
 
-  saveDefaultCart(defaultCart: DefaultCart) {
-    const { method_id } = defaultCart;
-    this.paymentMethods = [...this.paymentMethods].map((c: PaymentMethod) => {
+  saveDefaultCart(method_id: string) {
+    this.paymentMethods = [...this.paymentMethods].map((c: Card) => {
       if (c.id === Number(method_id)) {
         c.default_card = true;
       } else {
@@ -87,7 +84,7 @@ export class PaymentMethodService {
     return this.findOne(Number(method_id));
   }
 
-  async savePaymentMethod(createPaymentMethodDto: CreatePaymentMethodDto) {
+  async savePaymentMethod(createPaymentMethodDto: AddNewCardInput) {
     const paymentGateway: string = this.setting.options.paymentGateway;
     try {
       return this.saveCard(createPaymentMethodDto, paymentGateway);
@@ -97,12 +94,12 @@ export class PaymentMethodService {
   }
 
   async saveCard(
-    createPaymentMethodDto: CreatePaymentMethodDto,
+    createPaymentMethodDto: AddNewCardInput,
     paymentGateway: string,
   ) {
     const { method_key, default_card } = createPaymentMethodDto;
     const defaultCard = this.paymentMethods.find(
-      (card: PaymentMethod) => card.default_card,
+      (card: Card) => card.default_card,
     );
     if (!defaultCard || this.paymentMethods.length === 0) {
       createPaymentMethodDto.default_card = true;
@@ -113,7 +110,7 @@ export class PaymentMethodService {
       this.paymentMethodAlreadyExists(retrievedPaymentMethod.card.fingerprint)
     ) {
       return this.paymentMethods.find(
-        (pMethod: PaymentMethod) => pMethod.method_key === method_key,
+        (pMethod: Card) => pMethod.method_key === method_key,
       );
     } else {
       const paymentMethod = await this.makeNewPaymentMethodObject(
@@ -134,9 +131,10 @@ export class PaymentMethodService {
         break;
     }
   }
+
   paymentMethodAlreadyExists(fingerPrint: string) {
     const paymentMethod = this.paymentMethods.find(
-      (pMethod: PaymentMethod) => pMethod.fingerprint === fingerPrint,
+      (pMethod: Card) => pMethod.fingerprint === fingerPrint,
     );
     if (paymentMethod) {
       return true;
@@ -145,13 +143,13 @@ export class PaymentMethodService {
   }
 
   async makeNewPaymentMethodObject(
-    createPaymentMethodDto: CreatePaymentMethodDto,
+    createPaymentMethodDto: AddNewCardInput,
     paymentGateway: string,
   ) {
     const { method_key, default_card } = createPaymentMethodDto;
     const { id: user_id, name, email } = this.authService.me();
-    const listofCustomer = await this.stripeService.listAllCustomer();
-    let currentCustomer = listofCustomer.data.find(
+    const listOfCustomer = await this.stripeService.listAllCustomer();
+    let currentCustomer = listOfCustomer.data.find(
       (customer: StripeCustomer) => customer.email === email,
     );
     if (!currentCustomer) {
@@ -182,7 +180,7 @@ export class PaymentMethodService {
       };
       paymentGateways.push(customerGateway);
     }
-    const paymentMethod: PaymentMethod = {
+    const paymentMethod: Card = {
       id: Number(Date.now()),
       method_key: method_key,
       payment_gateway_id: customerGateway.id,

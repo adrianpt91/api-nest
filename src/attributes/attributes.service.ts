@@ -1,17 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { CreateAttributeDto } from './dto/create-attribute.dto';
-import { UpdateAttributeDto } from './dto/update-attribute.dto';
-import attributesJson from '@db/attributes.json';
-import { Attribute } from './entities/attribute.entity';
 import { plainToClass } from 'class-transformer';
-
+import { CreateAttributeInput } from './dto/create-attribute.input';
+import { UpdateAttributeInput } from './dto/update-attribute.input';
+import attributesJson from './attributes.json';
+import { Attribute } from './entities/attribute.entity';
+import { GetAttributeArgs } from './dto/get-attribute.args';
 const attributes = plainToClass(Attribute, attributesJson);
-
 @Injectable()
 export class AttributesService {
   private attributes: Attribute[] = attributes;
 
-  create(createAttributeDto: CreateAttributeDto) {
+  create(createAttributeInput: CreateAttributeInput) {
     return this.attributes[0];
   }
 
@@ -19,13 +18,14 @@ export class AttributesService {
     return this.attributes;
   }
 
-  findOne(param: string) {
-    return this.attributes.find(
-      (p) => p.id === Number(param) || p.slug === param,
-    );
+  findOne({ id, slug }: GetAttributeArgs) {
+    if (id) {
+      return this.attributes.find((p) => p.id === Number(id));
+    }
+    return this.attributes.find((p) => p.slug === slug);
   }
 
-  update(id: number, updateAttributeDto: UpdateAttributeDto) {
+  update(id: number, updateAttributeInput: UpdateAttributeInput) {
     return this.attributes[0];
   }
 

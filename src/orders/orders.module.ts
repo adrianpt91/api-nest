@@ -1,25 +1,23 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from 'src/auth/auth.module';
-import { PaymentModule } from 'src/payment/payment.module';
-import {
-  DownloadInvoiceController,
-  OrderExportController,
-  OrderFilesController,
-  OrdersController,
-  OrderStatusController,
-} from './orders.controller';
 import { OrdersService } from './orders.service';
+import {
+  GenerateExportUrlResolver,
+  GenerateInvoiceDownloadResolver,
+  OrderFileResolver,
+  OrdersResolver,
+} from './orders.resolver';
+import {PaymentModule} from 'src/payment/payment.module';
+import {AuthorsModule} from 'src/authors/authors.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
-  imports: [AuthModule, PaymentModule],
-  controllers: [
-    OrdersController,
-    OrderStatusController,
-    OrderFilesController,
-    OrderExportController,
-    DownloadInvoiceController,
+  imports: [PaymentModule, UsersModule],
+  providers: [
+    OrdersResolver,
+    OrdersService,
+    OrderFileResolver,
+    GenerateExportUrlResolver,
+    GenerateInvoiceDownloadResolver,
   ],
-  providers: [OrdersService],
-  exports: [OrdersService],
 })
 export class OrdersModule {}

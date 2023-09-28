@@ -1,21 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { Manufacturer } from './entities/manufacturer.entity';
-import manufacturersJson from '@db/manufacturers.json';
+import { CreateManufacturerInput } from './dto/create-manufacturer.input';
+import { UpdateManufacturerInput } from './dto/update-manufacturer.input';
 import { plainToClass } from 'class-transformer';
+import manufacturersJson from './manufacturers.json';
+import { Manufacturer } from './entities/manufacturer.entity';
 import Fuse from 'fuse.js';
-import { GetTopManufacturersDto } from './dto/get-top-manufacturers.dto';
-import {
-  GetManufacturersDto,
-  ManufacturerPaginator,
-} from './dto/get-manufactures.dto';
 import { paginate } from '../common/pagination/paginate';
-import { CreateManufacturerDto } from './dto/create-manufacturer.dto';
-import { UpdateManufacturerDto } from './dto/update-manufacturer.dto';
+import {
+  ManufacturerPaginator,
+  GetManufacturersArgs,
+} from './dto/get-manufacturers.args';
+import { GetManufacturerArgs } from './dto/get-manufacturer.args';
+import { GetProductArgs } from '../products/dto/get-product.args';
+import { Product } from '../products/entities/product.entity';
 
 const manufacturers = plainToClass(Manufacturer, manufacturersJson);
 
 const options = {
-  keys: ['name'],
+  keys: ['name', 'slug'],
   threshold: 0.3,
 };
 
@@ -25,59 +27,57 @@ const fuse = new Fuse(manufacturers, options);
 export class ManufacturersService {
   private manufacturers: Manufacturer[] = manufacturers;
 
-  create(createManufactureDto: CreateManufacturerDto) {
+  create(createManufacturerInput: CreateManufacturerInput) {
     return this.manufacturers[0];
   }
 
-  async getManufactures({
-    limit,
+  async getManufacturers({
+    text,
+    first,
     page,
-    search,
-  }: GetManufacturersDto): Promise<ManufacturerPaginator> {
-    if (!page) page = 1;
-    if (!limit) limit = 30;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
+  }: GetManufacturersArgs): Promise<ManufacturerPaginator> {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
     let data: Manufacturer[] = this.manufacturers;
-    if (search) {
-      console.log('search', search);
-      const parseSearchParams = search.split(';');
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        data = fuse.search(value)?.map(({ item }) => item);
-      }
+
+    if (text?.replace(/%/g, '')) {
+      const formatText = text?.replace(/%/g, '');
+      data = fuse.search(formatText)?.map(({ item }) => item);
     }
 
     const results = data.slice(startIndex, endIndex);
-    const url = `/manufacturers?search=${search}&limit=${limit}`;
+
     return {
       data: results,
-      ...paginate(data.length, page, limit, results.length, url),
+      paginatorInfo: paginate(data.length, page, first, results.length),
     };
   }
 
-  async getTopManufactures({
-    limit = 10,
-  }: GetTopManufacturersDto): Promise<Manufacturer[]> {
-    return manufacturers.slice(0, limit);
+  getManufacturer({ id, slug }: GetManufacturerArgs): Manufacturer {
+    if (id) {
+      return this.manufacturers.find((p) => p.id === Number(id));
+    }
+    return this.manufacturers.find((p) => p.slug === slug);
   }
 
-  async getManufacturesBySlug(slug: string): Promise<Manufacturer> {
-    return this.manufacturers.find(
-      (singleManufacture) => singleManufacture.slug === slug,
-    );
+  findOne(id: number) {
+    return `This action returns a #${id} manufacturer`;
   }
 
-  update(id: number, updateManufacturesDto: UpdateManufacturerDto) {
+  update(id: number, updateManufacturerInput: UpdateManufacturerInput) {
     const manufacturer = this.manufacturers.find((p) => p.id === Number(id));
 
     // Update author
-    manufacturer.is_approved = updateManufacturesDto.is_approved ?? true;
+    manufacturer.is_approved = updateManufacturerInput.is_approved ?? true;
 
     return manufacturer;
   }
 
   remove(id: number) {
-    return `This action removes a #${id} product`;
+    return this.manufacturers[0];
+  }
+
+  async topManufacturers(limit): Promise<Manufacturer[]> {
+    return this.manufacturers.slice(0, limit);
   }
 }

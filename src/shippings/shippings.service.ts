@@ -1,22 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { CreateShippingDto } from './dto/create-shipping.dto';
-import { GetShippingsDto } from './dto/get-shippings.dto';
-import { UpdateShippingDto } from './dto/update-shipping.dto';
+import { CreateShippingInput } from './dto/create-shipping.input';
+import { GetShippingsArgs } from './dto/get-shippings.args';
+import { UpdateShippingInput } from './dto/update-shipping.input';
 import { Shipping } from './entities/shipping.entity';
-import shippingsJson from '@db/shippings.json';
-
+import shippingsJson from './shippings.json';
 const shippings = plainToClass(Shipping, shippingsJson);
-
 @Injectable()
 export class ShippingsService {
   private shippings: Shipping[] = shippings;
 
-  create(createShippingDto: CreateShippingDto) {
+  create(createShippingInput: CreateShippingInput) {
     return this.shippings[0];
   }
 
-  getShippings({}: GetShippingsDto) {
+  findAll(getShippingsArgs: GetShippingsArgs) {
     return this.shippings;
   }
 
@@ -24,7 +22,7 @@ export class ShippingsService {
     return this.shippings.find((shipping) => shipping.id === Number(id));
   }
 
-  update(id: number, updateShippingDto: UpdateShippingDto) {
+  update(updateShippingInput: UpdateShippingInput) {
     return this.shippings[0];
   }
 

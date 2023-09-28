@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import analyticsJson from '@db/analytics.json';
+import analyticsJson from './analytics.json';
 import { plainToClass } from 'class-transformer';
 import { Analytics } from './entities/analytics.entity';
 

@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { UpdateAuthorDto } from './dto/update-author.dto';
+import { CreateAuthorInput } from './dto/create-author.input';
+import { UpdateAuthorInput } from './dto/update-author.input';
 import { plainToClass } from 'class-transformer';
-import authorsJson from '@db/authors.json';
+import authorsJson from './authors.json';
 import { Author } from './entities/author.entity';
 import Fuse from 'fuse.js';
-import { GetAuthorDto } from './dto/get-author.dto';
 import { paginate } from '../common/pagination/paginate';
-import { GetTopAuthorsDto } from './dto/get-top-authors.dto';
-import { CreateAuthorDto } from './dto/create-author.dto';
+import { AuthorPaginator, GetAuthorsArgs } from './dto/get-authors.args';
+import { GetAuthorArgs } from './dto/get-author.args';
 
 const authors = plainToClass(Author, authorsJson);
 
@@ -22,51 +22,57 @@ const fuse = new Fuse(authors, options);
 export class AuthorsService {
   private authors: Author[] = authors;
 
-  create(createAuthorDto: CreateAuthorDto) {
+  create(createAuthorInput: CreateAuthorInput) {
     return this.authors[0];
   }
 
-  getAuthors({ page, limit, search }: GetAuthorDto) {
-    if (!page) page = 1;
-    if (!limit) limit = 30;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
+  async getAuthors({
+    text,
+    first,
+    page,
+  }: GetAuthorsArgs): Promise<AuthorPaginator> {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
     let data: Author[] = this.authors;
-    if (search) {
-      const parseSearchParams = search.split(';');
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        data = fuse.search(value)?.map(({ item }) => item);
-      }
+
+    if (text?.replace(/%/g, '')) {
+      const formatText = text?.replace(/%/g, '');
+      data = fuse.search(formatText)?.map(({ item }) => item);
     }
 
     const results = data.slice(startIndex, endIndex);
 
-    const url = `/authors?search=${search}&limit=${limit}`;
     return {
       data: results,
-      ...paginate(data.length, page, limit, results.length, url),
+      paginatorInfo: paginate(data.length, page, first, results.length),
     };
   }
 
-  getAuthorBySlug(slug: string): Author {
+  getAuthor({ id, slug }: GetAuthorArgs): Author {
+    if (id) {
+      return this.authors.find((p) => p.id === Number(id));
+    }
     return this.authors.find((p) => p.slug === slug);
   }
 
-  async getTopAuthors({ limit = 10 }: GetTopAuthorsDto): Promise<Author[]> {
-    return this.authors.slice(0, limit);
+  findOne(id: number) {
+    return `This action returns a #${id} author`;
   }
 
-  update(id: number, updateAuthorDto: UpdateAuthorDto) {
+  update(id: number, updateAuthorInput: UpdateAuthorInput) {
     const author = this.authors.find((p) => p.id === Number(id));
 
     // Update author
-    author.is_approved = updateAuthorDto.is_approved ?? true;
+    author.is_approved = updateAuthorInput.is_approved ?? true;
 
     return author;
   }
 
   remove(id: number) {
-    return `This action removes a #${id} product`;
+    return this.authors[0];
+  }
+
+  async topAuthors(limit): Promise<Author[]> {
+    return this.authors.slice(0, limit);
   }
 }

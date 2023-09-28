@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { paginate } from 'src/common/pagination/paginate';
 import { plainToClass } from 'class-transformer';
 import Fuse from 'fuse.js';
-import { paginate } from 'src/common/pagination/paginate';
+import questionsJson from './questions.json';
 import { Question } from './entities/question.entity';
-import { GetQuestionDto } from './dto/get-questions.dto';
-import { CreateQuestionDto } from './dto/create-question.dto';
-import { UpdateQuestionDto } from './dto/update-question.dto';
-import questionsJSON from '@db/questions.json';
+import { CreateQuestionInput } from './dto/create-question.input';
+import { GetQuestionsArgs } from './dto/get-questions.args';
+import { UpdateQuestionInput } from './dto/update-question.input';
+import { GetMyQuestionsArgs } from './dto/get-my-questions.args';
+import { GetAllQuestionsArgs } from './dto/get-all-questions.args';
 
-const questions = plainToClass(Question, questionsJSON);
+const questions = plainToClass(Question, questionsJson);
 const options = {
   keys: [],
   threshold: 0.3,
@@ -16,55 +18,84 @@ const options = {
 const fuse = new Fuse(questions, options);
 
 @Injectable()
-export class QuestionService {
-  private question: Question[] = questions;
+export class QuestionsService {
+  private questions: Question[] = questions;
 
-  findAllQuestions({
-    limit,
-    page,
-    search,
-    answer,
-    product_id,
-  }: GetQuestionDto) {
-    if (!page) page = 1;
-    if (!limit) limit = 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    let data: Question[] = this.question;
+  create(createQuestionInput: CreateQuestionInput) {
+    const newQuestion = {
+      id: this.questions.length + 1,
+      ...createQuestionInput,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    // TODO: Fix it
+    // @ts-ignore
+    this.questions.push(newQuestion);
+    return newQuestion;
+  }
 
-    if (search) {
-      const parseSearchParams = search.split(';');
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        data = fuse.search(value)?.map(({ item }) => item);
-      }
-    }
+  findAll({ page, first, product_id }: GetQuestionsArgs) {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
+    let data: Question[] = this.questions;
 
     if (product_id) {
       data = data.filter((p) => p.product_id === Number(product_id));
     }
 
     const results = data.slice(startIndex, endIndex);
-    const url = `/questions?search=${search}&answer=${answer}&limit=${limit}`;
+
     return {
       data: results,
-      ...paginate(data.length, page, limit, results.length, url),
+      paginatorInfo: paginate(data.length, page, first, results.length),
+    };
+  }
+  
+  // findAllQuestion({ page, first, product_id }: GetAllQuestionsArgs) {
+  //   const startIndex = (page - 1) * first;
+  //   const endIndex = page * first;
+  //   let data: Question[] = this.questions;
+
+  //   if (product_id) {
+  //     data = data.filter((p) => p.product_id === Number(product_id));
+  //   }
+
+  //   const results = data.slice(startIndex, endIndex);
+
+  //   return {
+  //     data: results,
+  //     paginatorInfo: paginate(data.length, page, first, results.length),
+  //   };
+  // }
+
+  findOne(id: number) {
+    return this.questions.find((question) => question.id === Number(id));
+  }
+
+  update(id: number, updateQuestionInput: UpdateQuestionInput) {
+    const question = this.questions.find((q) => q.id === Number(id));
+
+    if (!question) {
+      throw new NotFoundException();
+    }
+
+    question.answer = updateQuestionInput?.answer;
+
+    return question;
+  }
+
+  getMyQuestions({ page, first }: GetMyQuestionsArgs) {
+    const startIndex = (page - 1) * first;
+    const endIndex = page * first;
+    const data: Question[] = this.questions.slice(1, 15);
+    const results = data.slice(startIndex, endIndex);
+    return {
+      data: results,
+      paginatorInfo: paginate(data.length, page, first, results.length),
     };
   }
 
-  findQuestion(id: number) {
-    return this.question.find((p) => p.id === id);
-  }
-
-  create(createQuestionDto: CreateQuestionDto) {
-    return this.question[0];
-  }
-
-  update(id: number, updateQuestionDto: UpdateQuestionDto) {
-    return this.question[0];
-  }
-
-  delete(id: number) {
-    return this.question[0];
+  remove(id: number) {
+    return this.questions[0];
   }
 }

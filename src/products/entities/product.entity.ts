@@ -1,3 +1,12 @@
+import {
+  ObjectType,
+  Field,
+  Int,
+  registerEnumType,
+  ID,
+  InputType,
+  createUnionType,
+} from '@nestjs/graphql';
 import { AttributeValue } from 'src/attributes/entities/attribute-value.entity';
 import { Category } from 'src/categories/entities/category.entity';
 import { Attachment } from 'src/common/entities/attachment.entity';
@@ -6,7 +15,11 @@ import { Order } from 'src/orders/entities/order.entity';
 import { Shop } from 'src/shops/entities/shop.entity';
 import { Tag } from 'src/tags/entities/tag.entity';
 import { Type } from 'src/types/entities/type.entity';
+import { Type as TypeTransformer } from 'class-transformer';
+import { Author } from '../../authors/entities/author.entity';
+import { Manufacturer } from '../../manufacturers/entities/manufacturer.entity';
 import { Review } from '../../reviews/entities/review.entity';
+import { Variation } from './variation.entity';
 
 enum ProductStatus {
   PUBLISH = 'publish',
@@ -18,24 +31,69 @@ enum ProductType {
   VARIABLE = 'variable',
 }
 
+registerEnumType(ProductStatus, { name: 'ProductStatus' });
+registerEnumType(ProductType, { name: 'ProductType' });
+
+export const FileableUnion = createUnionType({
+  name: 'FileableUnion',
+  types: () => [Product, Variation],
+  resolveType: (value) => {
+    if (value.name) {
+      return Product;
+    }
+
+    if (value.title) {
+      return Variation;
+    }
+
+    return null;
+  },
+});
+
+// @InputType('DigitalFileInputType', { isAbstract: true })
+@ObjectType()
+export class DigitalFile extends CoreEntity {
+  @Field(() => Int)
+  attachment_id: number;
+  @Field(() => FileableUnion, { nullable: true })
+  fileable?: Product | Variation;
+  // fileable?: Product;
+  url: string;
+}
+
+@InputType('ProductInputType', { isAbstract: true })
+@ObjectType()
 export class Product extends CoreEntity {
   name: string;
   slug: string;
-  type: Type;
+  type?: Type;
+  @Field(() => ID)
   type_id: number;
   product_type: ProductType;
-  categories: Category[];
+  categories?: Category[];
   tags?: Tag[];
   variations?: AttributeValue[];
   variation_options?: Variation[];
   pivot?: OrderProductPivot;
   orders?: Order[];
-  shop: Shop;
-  shop_id: number;
+  @TypeTransformer(() => Shop)
+  shop?: Shop;
+  author?: Author;
+  manufacturer?: Manufacturer;
+  @Field(() => ID)
+  shop_id?: number;
+  @Field(() => ID)
+  author_id?: number;
+  @Field(() => ID)
+  manufacturer_id?: number;
   related_products?: Product[];
-  description: string;
-  in_stock: boolean;
-  is_taxable: boolean;
+  description?: string;
+  in_stock?: boolean;
+  is_taxable?: boolean;
+  is_digital?: boolean;
+  is_external?: boolean;
+  external_product_url?: string;
+  external_product_button_text?: string;
   sale_price?: number;
   max_price?: number;
   min_price?: number;
@@ -47,6 +105,7 @@ export class Product extends CoreEntity {
   length?: string;
   width?: string;
   price?: number;
+  @Field(() => Int)
   quantity: number;
   unit: string;
   ratings: number;
@@ -56,31 +115,13 @@ export class Product extends CoreEntity {
   translated_languages?: string[];
 }
 
+@InputType('PivotInputType', { isAbstract: true })
+@ObjectType()
 export class OrderProductPivot {
+  @Field(() => ID)
   variation_option_id?: number;
+  @Field(() => Int)
   order_quantity: number;
   unit_price: number;
   subtotal: number;
-}
-
-export class Variation {
-  id: number;
-  title: string;
-  price: number;
-  sku: string;
-  is_disable: boolean;
-  sale_price?: number;
-  quantity: number;
-  options: VariationOption[];
-}
-
-export class VariationOption {
-  name: string;
-  value: string;
-}
-
-export class File extends CoreEntity {
-  attachment_id: number;
-  url: string;
-  fileable_id: number;
 }

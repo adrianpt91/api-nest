@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { CreateTypeDto } from './dto/create-type.dto';
-import { UpdateTypeDto } from './dto/update-type.dto';
+import { CreateTypeInput } from './dto/create-type.input';
+import { UpdateTypeInput } from './dto/update-type.input';
 import { Type } from './entities/type.entity';
-
-import typesJson from '@db/types.json';
+import typesJson from './types.json';
 import Fuse from 'fuse.js';
-import { GetTypesDto } from './dto/get-types.dto';
+import { GetTypesArgs } from './dto/get-types.args';
+import { GetTypeArgs } from './dto/get-type.args';
 
 const types = plainToClass(Type, typesJson);
 const options = {
@@ -19,52 +19,31 @@ const fuse = new Fuse(types, options);
 export class TypesService {
   private types: Type[] = types;
 
-  getTypes({ text, search }: GetTypesDto) {
-    let data: Type[] = this.types;
-    if (text?.replace(/%/g, '')) {
-      data = fuse.search(text)?.map(({ item }) => item);
-    }
-
-    if (search) {
-      const parseSearchParams = search.split(';');
-      const searchText: any = [];
-      for (const searchParam of parseSearchParams) {
-        const [key, value] = searchParam.split(':');
-        // TODO: Temp Solution
-        if (key !== 'slug') {
-          searchText.push({
-            [key]: value,
-          });
-        }
-      }
-
-      data = fuse
-        .search({
-          $and: searchText,
-        })
-        ?.map(({ item }) => item);
-    }
-
-    return data;
-  }
-
-  getTypeBySlug(slug: string): Type {
-    return this.types.find((p) => p.slug === slug);
-  }
-
-  create(createTypeDto: CreateTypeDto) {
+  create(createTypeInput: CreateTypeInput) {
     return this.types[0];
   }
 
-  findAll() {
-    return `This action returns all types`;
+  getTypes({ text }: GetTypesArgs) {
+    let data: Type[] = this.types;
+    if (text?.replace(/%/g, '')) {
+      const formatText = text?.replace(/%/g, '');
+      data = fuse.search(formatText)?.map(({ item }) => item);
+    }
+    return data;
+  }
+
+  getType({ id, slug }: GetTypeArgs): Type {
+    if (id) {
+      return this.types.find((p) => p.id === Number(id));
+    }
+    return this.types.find((p) => p.slug === slug);
   }
 
   findOne(id: number) {
     return `This action returns a #${id} type`;
   }
 
-  update(id: number, updateTypeDto: UpdateTypeDto) {
+  update(id: number, updateTypeInput: UpdateTypeInput) {
     return this.types[0];
   }
 

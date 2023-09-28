@@ -1,9 +1,13 @@
+import { ObjectType } from "@nestjs/graphql";
+
+@ObjectType()
 export class StripeCustomerList {
   object?: string;
   url?: string;
   has_more?: boolean;
   data?: StripeCustomer[];
 }
+@ObjectType()
 export class StripeCustomer {
   id?: string;
   object?: string;
@@ -28,6 +32,7 @@ export class StripeCustomer {
   tax_exempt?: string;
   test_clock?: any;
 }
+@ObjectType()
 export class StripePaymentMethod {
   id?: string;
   object?: string;
@@ -39,6 +44,7 @@ export class StripePaymentMethod {
   metadata?: Metadata;
   type?: string;
 }
+@ObjectType()
 export class InvoiceSettings {
   custom_fields?: any;
   default_payment_method?: any;
@@ -46,9 +52,11 @@ export class InvoiceSettings {
   rendering_options?: any;
 }
 
+@ObjectType()
 export class Metadata {
   order_tracking_number?: number;
 }
+@ObjectType()
 export class BillingDetails {
   address?: Address;
   email?: any;
@@ -56,6 +64,7 @@ export class BillingDetails {
   phone?: any;
 }
 
+@ObjectType()
 export class Address {
   city?: any;
   country?: any;
@@ -65,6 +74,7 @@ export class Address {
   state?: any;
 }
 
+@ObjectType()
 export class Card {
   brand?: string;
   checks?: Checks;
@@ -80,21 +90,25 @@ export class Card {
   wallet?: any;
 }
 
+@ObjectType()
 export class Checks {
   address_line1_check?: any;
   address_postal_code_check?: any;
   cvc_check?: string;
 }
 
+@ObjectType()
 export class Networks {
   available?: string[];
   preferred?: any;
 }
 
+@ObjectType()
 export class ThreeDSecureUsage {
   supported?: boolean;
 }
 
+@ObjectType()
 export class StripePaymentIntent {
   id?: string;
   amount?: number;
@@ -108,6 +122,7 @@ export class StripePaymentIntent {
   status?: string;
 }
 
+@ObjectType()
 export class PaymentIntentMetadata {
   order_tracking_number?: number;
 }

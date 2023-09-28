@@ -1,20 +1,24 @@
+import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
 import { CoreEntity } from '../../common/entities/core.entity';
 import { Attachment } from '../../common/entities/attachment.entity';
 import { ShopSocials } from '../../settings/entities/setting.entity';
 
+@InputType('AuthorInputType', { isAbstract: true })
+@ObjectType()
 export class Author extends CoreEntity {
-  bio?: string;
-  born?: string;
-  cover_image?: Attachment;
-  death?: string;
-  image?: Attachment;
-  is_approved?: boolean;
-  languages?: string;
   name: string;
-  products_count?: number;
-  quote?: string;
+  is_approved?: boolean;
   slug?: string;
-  socials?: ShopSocials;
+  bio?: string;
+  quote?: string;
+  @Field(() => Int)
+  products_count?: number;
+  born?: string;
+  death?: string;
+  languages?: string;
+  socials?: ShopSocials[];
+  image?: Attachment;
+  cover_image?: Attachment;
   language?: string;
   translated_languages?: string[];
 }

@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthorsService } from './authors.service';
-import { AuthorsController, TopAuthors } from './authors.controller';
+import { AuthorsResolver } from './authors.resolver';
 
 @Module({
-  controllers: [AuthorsController, TopAuthors],
-  providers: [AuthorsService],
+  providers: [AuthorsResolver, AuthorsService]
 })
 export class AuthorsModule {}

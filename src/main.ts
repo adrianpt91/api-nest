@@ -1,22 +1,17 @@
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';
+import {ValidationPipe} from '@nestjs/common';
+import {NestFactory} from '@nestjs/core';
+import {AppModule} from './app.module';
+import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.js';
+import * as process from "process";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
-  app.setGlobalPrefix('api');
+  const app = await NestFactory.create(AppModule);
+  app.enableCors();
   app.useGlobalPipes(new ValidationPipe());
-  const config = new DocumentBuilder()
-    .setTitle('Marvel')
-    .setDescription('Marvel Mock API')
-    .setVersion('1.0')
-    .addTag('marvel')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
-  const PORT = process.env.PORT || 5000;
+  app.use(graphqlUploadExpress({ maxFileSize: 1000000, maxFiles: 10 }));
+  const PORT = process.env.PORT || 4000;
   await app.listen(PORT);
-  console.log(`Application is running on: ${await app.getUrl()}/api`);
+  console.log(`Application is running on: ${await app.getUrl()}`);
 }
+
 bootstrap();
